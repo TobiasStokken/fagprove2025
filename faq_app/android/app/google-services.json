@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "404349440917",
+    "project_id": "faq-app-74327",
+    "storage_bucket": "faq-app-74327.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404349440917:android:920857bb69aed34809dc9c",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBH6FbLAVkWNwLyAdtyZLPgtTPSCG_A234"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404349440917:android:71094e551a4aff8709dc9c",
+        "android_client_info": {
+          "package_name": "com.example.faq_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBH6FbLAVkWNwLyAdtyZLPgtTPSCG_A234"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
