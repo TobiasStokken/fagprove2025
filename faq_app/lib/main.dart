@@ -1,6 +1,7 @@
 import 'package:faq_app/providers/isadmin_provider.dart';
 import 'package:faq_app/screens/admin_portal_screen.dart';
 import 'package:faq_app/screens/ask_ai_screen.dart';
+import 'package:faq_app/screens/faq_search_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -101,7 +102,11 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
               IconButton(
                 icon: const Icon(Icons.search),
                 onPressed: () async {
-                  // TODO: Implement search functionality
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const FaqSearchScreen(),
+                    ),
+                  );
                 },
               ),
             ],
