@@ -1,19 +1,45 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+import { onCall } from "firebase-functions/v2/https";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
-import {onRequest} from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
+initializeApp();
+const db = getFirestore();
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+export const createNewFAQ = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new Error("Unauthorized: No user ID found.");
+  }
+  
+  if (!(await checkIsAdmin(uid))) {
+    throw new Error("Unauthorized: User is not an admin.");
+  }
+  await db.collection("faq").doc().create({
+    title: request.data.title,
+    description: request.data.description,
+    createdAt: Timestamp.now(),
+  });
+});
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export const deleteFAQ = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new Error("Unauthorized: No user ID found.");
+  }
+
+  if (!(await checkIsAdmin(uid))) {
+    throw new Error("Unauthorized: User is not an admin.");
+  }
+
+  const faqId = request.data.faqId;
+  if (!faqId) {
+    throw new Error("Invalid request: FAQ ID is required.");
+  }
+
+  await db.collection("faq").doc(faqId).delete();
+});
+
+async function checkIsAdmin(uid: string): Promise<boolean> {
+  const adminDoc = await db.collection("admin").doc(uid).get();
+  return adminDoc.exists;
+}

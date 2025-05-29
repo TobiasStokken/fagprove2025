@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:faq_app/providers/isadmin_provider.dart';
 import 'package:faq_app/screens/admin_portal_screen.dart';
 import 'package:faq_app/screens/ask_ai_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,13 +8,14 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/faq_screen.dart';
 import 'screens/profile_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -52,36 +53,14 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-class MainNavigationPage extends StatefulWidget {
+class MainNavigationPage extends ConsumerStatefulWidget {
   const MainNavigationPage({super.key});
 
   @override
-  State<MainNavigationPage> createState() => _MainNavigationPageState();
+  ConsumerState<MainNavigationPage> createState() => _MainNavigationPageState();
 }
 
-class _MainNavigationPageState extends State<MainNavigationPage> {
-  List<String> adminUsers = [];
-  bool isAdmin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchAdminUsers();
-  }
-
-  Future<void> _fetchAdminUsers() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('admin_emails').get();
-    adminUsers = snapshot.docs.map((doc) {
-      final data = doc.data();
-      return data['email'] as String;
-    }).toList();
-    final userEmail = FirebaseAuth.instance.currentUser?.email;
-    setState(() {
-      isAdmin = userEmail != null && adminUsers.contains(userEmail);
-    });
-  }
-
+class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
   int _selectedIndex = 0;
 
   static const List<Widget> _pages = <Widget>[
@@ -106,43 +85,54 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-          ),
-        ],
+    final isAdminAsync = ref.watch(isAdminProvider);
+    return isAdminAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.question_answer),
-            label: 'FAQ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.smart_toy_outlined),
-            label: 'Spør Ai',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-          if (isAdmin)
-            BottomNavigationBarItem(
-              icon: Icon(Icons.admin_panel_settings),
-              label: 'Admin Portal',
-            ),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+      error: (e, st) => Scaffold(
+        body: Center(child: Text('Error: \\${e.toString()}')),
       ),
+      data: (isAdmin) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_titles[_selectedIndex]),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () async {
+                  // TODO: Implement search functionality
+                },
+              ),
+            ],
+          ),
+          body: _pages[_selectedIndex],
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            items: <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.question_answer),
+                label: 'FAQ',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.smart_toy_outlined),
+                label: 'Spør Ai',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+              if (isAdmin)
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.admin_panel_settings),
+                  label: 'Admin Portal',
+                ),
+            ],
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+          ),
+        );
+      },
     );
   }
 }

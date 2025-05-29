@@ -1,19 +1,41 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:faq_app/providers/faqData_provider.dart';
+import 'package:faq_app/widgets/faq_theme_card.dart';
 import 'package:flutter/material.dart';
 
-class FaqListScreen extends StatelessWidget {
+class FaqListScreen extends ConsumerWidget {
   const FaqListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.question_answer, size: 48),
-          SizedBox(width: 16),
-          Text('FAQ List', style: TextStyle(fontSize: 24)),
-        ],
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final faqDataAsync = ref.watch(faqDataProvider);
+    return faqDataAsync.when(
+      data: (faqData) => _successWidget(faqData, ref),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text('Noe gikk galt: $e')),
+    );
+  }
+
+  Widget _successWidget(List faqData, WidgetRef ref) {
+    if (faqData.isEmpty) {
+      return const Center(child: Text('Ingen FAQ-temaer funnet.'));
+    }
+    return Column(
+      children: [
+        TextButton(
+            onPressed: () {
+              ref.invalidate(faqDataProvider);
+            },
+            child: const Text('Refresh')),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: faqData
+                .map((faqData) => FaqThemeCard(faqData: faqData))
+                .toList(),
+          ),
+        ),
+      ],
     );
   }
 }
