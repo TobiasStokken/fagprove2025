@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:faq_app/models/FAQ_models.dart';
 import 'package:faq_app/providers/faqdata_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -175,12 +177,9 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
       ),
     );
     if (confirm == true) {
-      await FirebaseFirestore.instance
-          .collection('faq')
-          .doc(widget.docId)
-          .collection('questions')
-          .doc(questionId)
-          .delete();
+      await FirebaseFunctions.instance
+          .httpsCallable('deleteQuestion')
+          .call({'faqId': widget.docId, 'questionId': questionId});
       setState(() {
         widget.faqData.questions.removeAt(index);
       });
@@ -251,10 +250,9 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
                   );
                   if (confirm == true) {
                     setState(() => _isSaving = true);
-                    await FirebaseFirestore.instance
-                        .collection('faq')
-                        .doc(widget.docId)
-                        .delete();
+                    await FirebaseFunctions.instance
+                        .httpsCallable('deleteFAQ')
+                        .call({'faqId': widget.docId});
                     setState(() => _isSaving = false);
                     if (mounted) Navigator.of(context).pop(true);
                   }

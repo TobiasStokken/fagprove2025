@@ -20,22 +20,17 @@ class FaqListScreen extends ConsumerWidget {
     if (faqData.isEmpty) {
       return const Center(child: Text('Ingen FAQ-temaer funnet.'));
     }
-    return Column(
-      children: [
-        TextButton(
-            onPressed: () {
-              ref.invalidate(faqDataProvider);
-            },
-            child: const Text('Refresh')),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: faqData
-                .map((faqData) => FaqThemeCard(faqData: faqData))
-                .toList(),
-          ),
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(faqDataProvider);
+        },
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children:
+              faqData.map((faqData) => FaqThemeCard(faqData: faqData)).toList(),
         ),
-      ],
+      ),
     );
   }
 }
