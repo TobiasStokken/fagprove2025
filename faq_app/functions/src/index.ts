@@ -31,6 +31,77 @@ export const createNewFAQ = onCall(async (request) => {
   });
 });
 
+export const editFAQ = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new Error("Unauthorized: No user ID found.");
+  }
+  if (!(await checkIsAdmin(uid))) {
+    throw new Error("Unauthorized: User is not an admin.");
+  }
+  const faqId = request.data.faqId;
+  if (!faqId) {
+    throw new Error("Invalid request: FAQ ID is required.");
+  }
+  const faqData = {
+    title: request.data.title,
+    description: request.data.description,
+    updatedAt: Timestamp.now(),
+  };
+  await db.collection("faq").doc(faqId).set(faqData, { merge: true });
+  return { success: true, message: "FAQ updated successfully." };
+});
+
+export const createQuestion = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new Error("Unauthorized: No user ID found.");
+  }
+
+  if (!(await checkIsAdmin(uid))) {
+    throw new Error("Unauthorized: User is not an admin.");
+  }
+
+  const faqId = request.data.faqId;
+  if (!faqId) {
+    throw new Error("Invalid request: FAQ ID is required.");
+  }
+  
+  const questionData = {
+    question: request.data.question,
+    answer: request.data.answer,
+    createdAt: Timestamp.now(),
+  };
+  
+  await db.collection("faq").doc(faqId).collection("questions").doc().set(questionData);
+  return { success: true, message: "Question created successfully." };
+});
+
+export const editQuestion = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new Error("Unauthorized: No user ID found.");
+  }
+  if (!(await checkIsAdmin(uid))) {
+    throw new Error("Unauthorized: User is not an admin.");
+  }
+  const faqId = request.data.faqId;
+  if (!faqId) {
+    throw new Error("Invalid request: FAQ ID is required.");
+  }
+  const questionId = request.data.questionId;
+  if (!questionId) {
+    throw new Error("Invalid request: Question ID is required.");
+  }
+  const questionData = {
+    question: request.data.question,
+    answer: request.data.answer,
+    updatedAt: Timestamp.now(),
+  };
+  await db.collection("faq").doc(faqId).collection("questions").doc(questionId).set(questionData, { merge: true });
+  return { success: true, message: "Question updated successfully." };
+});
+
 export const deleteFAQ = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {

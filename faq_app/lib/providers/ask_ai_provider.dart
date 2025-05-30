@@ -19,7 +19,6 @@ class AskAiNotifier extends StateNotifier<List<Message>> {
       final response = await FirebaseFunctions.instance
           .httpsCallable('askAi')
           .call({'question': text});
-      print('Response from Cloud Function: $response');
       final String aiResponse = response.data['answer'] ?? 'Ingen svar fra AI.';
       state = [...state, Message(text: aiResponse, isUser: false)];
     } catch (e) {

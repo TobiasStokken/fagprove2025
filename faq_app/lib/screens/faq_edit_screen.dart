@@ -1,8 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:faq_app/models/FAQ_models.dart';
 import 'package:faq_app/providers/faqdata_provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,12 +35,10 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
 
   Future<void> _saveChanges() async {
     setState(() => _isSaving = true);
-    await FirebaseFirestore.instance
-        .collection('faq')
-        .doc(widget.docId)
-        .update({
-      'title': _titleController.text,
-      'description': _descriptionController.text,
+    await FirebaseFunctions.instance.httpsCallable('editFAQ').call({
+      'faqId': widget.docId,
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
     });
     setState(() => _isSaving = false);
     if (mounted) Navigator.of(context).pop(true);
@@ -143,11 +139,8 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
       ),
     );
     if (result == true && questionController.text.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('faq')
-          .doc(widget.docId)
-          .collection('questions')
-          .add({
+      await FirebaseFunctions.instance.httpsCallable('createQuestion').call({
+        'faqId': widget.docId,
         'question': questionController.text,
         'answer': answerController.text,
       });
@@ -188,16 +181,13 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
   }
 
   // Update a question
-  Future<void> _updateQuestion(
-      WidgetRef ref, String questionId, String newQ, String newA) async {
-    await FirebaseFirestore.instance
-        .collection('faq')
-        .doc(widget.docId)
-        .collection('questions')
-        .doc(questionId)
-        .update({
-      'question': newQ,
-      'answer': newA,
+  Future<void> _updateQuestion(WidgetRef ref, String questionId,
+      String newQuestion, String newAnswer) async {
+    await FirebaseFunctions.instance.httpsCallable('editQuestion').call({
+      'faqId': widget.docId,
+      'questionId': questionId,
+      'question': newQuestion,
+      'answer': newAnswer
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Spørsmål oppdatert!')),
