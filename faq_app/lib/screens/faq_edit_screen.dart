@@ -4,6 +4,7 @@ import 'package:faq_app/providers/faqdata_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// Main screen for editing a FAQ
 class FaqEditScreen extends StatefulWidget {
   final FAQ faqData;
   final String docId;
@@ -33,6 +34,7 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
     super.dispose();
   }
 
+  // Save FAQ changes to backend
   Future<void> _saveChanges() async {
     setState(() => _isSaving = true);
     await FirebaseFunctions.instance.httpsCallable('editFAQ').call({
@@ -42,6 +44,59 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
     });
     setState(() => _isSaving = false);
     if (mounted) Navigator.of(context).pop(true);
+  }
+
+  // Show dialog to add a new question
+  Future<void> _showAddQuestionDialog(WidgetRef ref) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AddQuestionDialog(),
+    );
+    if (result != null && result) {
+      final question = AddQuestionDialog.question;
+      final answer = AddQuestionDialog.answer;
+      if (question.isNotEmpty) {
+        await FirebaseFunctions.instance.httpsCallable('createQuestion').call({
+          'faqId': widget.docId,
+          'question': question,
+          'answer': answer,
+        });
+        if (mounted) ref.invalidate(faqDataProvider);
+        setState(() {});
+      }
+    }
+  }
+
+  // Delete a question
+  Future<void> _deleteQuestion(
+      WidgetRef ref, String questionId, int index) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => ConfirmDeleteDialog(),
+    );
+    if (confirm == true) {
+      await FirebaseFunctions.instance.httpsCallable('deleteQuestion').call({
+        'faqId': widget.docId,
+        'questionId': questionId,
+      });
+      if (mounted) ref.invalidate(faqDataProvider);
+      setState(() {});
+    }
+  }
+
+  // Update a question
+  Future<void> _updateQuestion(WidgetRef ref, String questionId,
+      String newQuestion, String newAnswer) async {
+    await FirebaseFunctions.instance.httpsCallable('editQuestion').call({
+      'faqId': widget.docId,
+      'questionId': questionId,
+      'question': newQuestion,
+      'answer': newAnswer,
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Spørsmål oppdatert!')),
+    );
+    if (mounted) ref.invalidate(faqDataProvider);
   }
 
   @override
@@ -62,13 +117,32 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      _buildTitleField(),
+                      _TitleField(controller: _titleController),
                       const SizedBox(height: 16),
-                      _buildDescriptionField(),
+                      _DescriptionField(controller: _descriptionController),
                       const SizedBox(height: 24),
-                      _buildActionButtons(),
+                      _ActionButtons(
+                        isSaving: _isSaving,
+                        onSave: _saveChanges,
+                        onDelete: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) =>
+                                ConfirmDeleteDialog(isFaq: true),
+                          );
+                          if (confirm == true) {
+                            setState(() => _isSaving = true);
+                            await FirebaseFunctions.instance
+                                .httpsCallable('deleteFAQ')
+                                .call({'faqId': widget.docId});
+                            setState(() => _isSaving = false);
+                            if (mounted) Navigator.of(context).pop(true);
+                          }
+                        },
+                      ),
                       const SizedBox(height: 24),
-                      _buildQuestionsHeader(context, ref),
+                      _QuestionsHeader(
+                          onAdd: () => _showAddQuestionDialog(ref)),
                       ..._buildQuestionList(ref, faq),
                     ],
                   ),
@@ -104,156 +178,63 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
       );
     });
   }
+}
 
-  // Show dialog to add a new question
-  Future<void> _showAddQuestionDialog(WidgetRef ref) async {
-    final questionController = TextEditingController();
-    final answerController = TextEditingController();
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nytt spørsmål'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: questionController,
-              decoration: const InputDecoration(labelText: 'Spørsmål'),
-            ),
-            TextField(
-              controller: answerController,
-              decoration: const InputDecoration(labelText: 'Svar'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Avbryt'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Legg til'),
-          ),
-        ],
-      ),
-    );
-    if (result == true && questionController.text.isNotEmpty) {
-      await FirebaseFunctions.instance.httpsCallable('createQuestion').call({
-        'faqId': widget.docId,
-        'question': questionController.text,
-        'answer': answerController.text,
-      });
-      if (mounted) ref.invalidate(faqDataProvider);
-      setState(() {});
-    }
-  }
+// --- UI Helper Widgets ---
 
-  // Delete a question
-  Future<void> _deleteQuestion(
-      WidgetRef ref, String questionId, int index) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bekreft sletting'),
-        content: const Text('Vil du slette dette spørsmålet?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Avbryt'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Slett', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await FirebaseFunctions.instance
-          .httpsCallable('deleteQuestion')
-          .call({'faqId': widget.docId, 'questionId': questionId});
-      setState(() {
-        widget.faqData.questions.removeAt(index);
-      });
-      if (mounted) ref.invalidate(faqDataProvider);
-    }
-  }
-
-  // Update a question
-  Future<void> _updateQuestion(WidgetRef ref, String questionId,
-      String newQuestion, String newAnswer) async {
-    await FirebaseFunctions.instance.httpsCallable('editQuestion').call({
-      'faqId': widget.docId,
-      'questionId': questionId,
-      'question': newQuestion,
-      'answer': newAnswer
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Spørsmål oppdatert!')),
-    );
-    if (mounted) ref.invalidate(faqDataProvider);
-  }
-
-  Widget _buildTitleField() => TextField(
-        controller: _titleController,
+class _TitleField extends StatelessWidget {
+  final TextEditingController controller;
+  const _TitleField({required this.controller});
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
         decoration: const InputDecoration(labelText: 'Tittel'),
       );
+}
 
-  Widget _buildDescriptionField() => TextField(
-        controller: _descriptionController,
+class _DescriptionField extends StatelessWidget {
+  final TextEditingController controller;
+  const _DescriptionField({required this.controller});
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
         decoration: const InputDecoration(labelText: 'Beskrivelse'),
         maxLines: 3,
       );
+}
 
-  Widget _buildActionButtons() {
-    return _isSaving
+class _ActionButtons extends StatelessWidget {
+  final bool isSaving;
+  final VoidCallback onSave;
+  final VoidCallback onDelete;
+  const _ActionButtons(
+      {required this.isSaving, required this.onSave, required this.onDelete});
+  @override
+  Widget build(BuildContext context) {
+    return isSaving
         ? const CircularProgressIndicator()
         : Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ElevatedButton(
-                onPressed: _saveChanges,
+                onPressed: onSave,
                 child: const Text('Lagre endringer'),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Bekreft sletting'),
-                      content: const Text(
-                          'Er du sikker på at du vil slette denne FAQ? Dette kan ikke angres.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('Avbryt'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text('Slett',
-                              style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    setState(() => _isSaving = true);
-                    await FirebaseFunctions.instance
-                        .httpsCallable('deleteFAQ')
-                        .call({'faqId': widget.docId});
-                    setState(() => _isSaving = false);
-                    if (mounted) Navigator.of(context).pop(true);
-                  }
-                },
+                onPressed: onDelete,
                 child: const Text('Slett'),
               ),
             ],
           );
   }
+}
 
-  Widget _buildQuestionsHeader(BuildContext context, WidgetRef ref) {
+class _QuestionsHeader extends StatelessWidget {
+  final VoidCallback onAdd;
+  const _QuestionsHeader({required this.onAdd});
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -262,7 +243,78 @@ class _FaqEditScreenState extends State<FaqEditScreen> {
         IconButton(
           icon: const Icon(Icons.add),
           tooltip: 'Legg til spørsmål',
-          onPressed: () => _showAddQuestionDialog(ref),
+          onPressed: onAdd,
+        ),
+      ],
+    );
+  }
+}
+
+// --- Dialogs ---
+
+class AddQuestionDialog extends StatefulWidget {
+  static String question = '';
+  static String answer = '';
+  @override
+  State<AddQuestionDialog> createState() => _AddQuestionDialogState();
+}
+
+class _AddQuestionDialogState extends State<AddQuestionDialog> {
+  final TextEditingController _questionController = TextEditingController();
+  final TextEditingController _answerController = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nytt spørsmål'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _questionController,
+            decoration: const InputDecoration(labelText: 'Spørsmål'),
+          ),
+          TextField(
+            controller: _answerController,
+            decoration: const InputDecoration(labelText: 'Svar'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Avbryt'),
+        ),
+        TextButton(
+          onPressed: () {
+            AddQuestionDialog.question = _questionController.text;
+            AddQuestionDialog.answer = _answerController.text;
+            Navigator.of(context).pop(true);
+          },
+          child: const Text('Legg til'),
+        ),
+      ],
+    );
+  }
+}
+
+class ConfirmDeleteDialog extends StatelessWidget {
+  final bool isFaq;
+  const ConfirmDeleteDialog({this.isFaq = false});
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(isFaq ? 'Bekreft sletting av FAQ' : 'Bekreft sletting'),
+      content: Text(isFaq
+          ? 'Er du sikker på at du vil slette denne FAQ? Dette kan ikke angres.'
+          : 'Vil du slette dette spørsmålet?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Avbryt'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Slett', style: TextStyle(color: Colors.red)),
         ),
       ],
     );

@@ -35,9 +35,21 @@ class FaqThemeCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(faqData.theme.title),
+                      Text(faqData.theme.title,
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       SizedBox(height: 8.0),
-                      Text(faqData.theme.description),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.6),
+                        child: Text(
+                          faqData.theme.description,
+                          maxLines: 4,
+                        ),
+                      ),
+                      SizedBox(height: 8.0),
+                      Text('Antall spørsmål: ${faqData.questions.length}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                   Icon(Icons.arrow_forward_ios)

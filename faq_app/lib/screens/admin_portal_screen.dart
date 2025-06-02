@@ -18,15 +18,9 @@ class AdminPortalScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             TextButton(
-              onPressed: () async {
-                await FirebaseFunctions.instance
-                    .httpsCallable('createNewFAQ')
-                    .call({'title': 'Faq 0', 'description': 'description'});
-                ref.invalidate(faqDataProvider);
-              },
+              onPressed: () => _showAddFaqDialog(context, ref),
               child: const Text('Ny FAQ'),
             ),
-            const Text('Admin side', style: TextStyle(fontSize: 24)),
             Expanded(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -62,5 +56,46 @@ class AdminPortalScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showAddFaqDialog(BuildContext context, WidgetRef ref) async {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ny FAQ'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Tittel'),
+            ),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Beskrivelse'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Avbryt'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Opprett'),
+          ),
+        ],
+      ),
+    );
+    if (result == true && titleController.text.isNotEmpty) {
+      await FirebaseFunctions.instance.httpsCallable('createNewFAQ').call({
+        'title': titleController.text,
+        'description': descriptionController.text
+      });
+      ref.invalidate(faqDataProvider);
+    }
   }
 }
